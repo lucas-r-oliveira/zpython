@@ -8,16 +8,21 @@ pub const Lexer = struct {
     position: u8 = 0,
     read_position: u8 = 0,
     ch: u8 = undefined, // this is supposed to be a byte. However, consider the case where we're supporting UTF-8
+    allocator: Allocator,
 
     pub fn init(allocator: Allocator, input: []const u8) !*Lexer {
         const l: *Lexer = try allocator.create(Lexer);
         l.* = .{
             .input = input,
+            .allocator = allocator,
         };
+
+        l.readChar();
 
         return l;
     }
 
+    // DEPRECATED
     // Can I do this? -> EDIT: guess not
     pub fn deinit(self: Lexer, allocator: Allocator) void {
         allocator.destroy(self);
@@ -42,37 +47,62 @@ pub const Lexer = struct {
         self.read_position += 1;
     }
 
-    pub fn nextToken(self: *Lexer) token.Token {
+    pub fn nextToken(self: *Lexer) !token.Token {
         var tok: token.Token = undefined;
 
         switch (self.ch) {
-            '=' => tok = token.Token{ .type = token.EQUAL, .literal = &[_]u8{self.ch} }, //newToken(token.EQUAL, self.ch),
-            '(' => tok = newToken(token.LPAR, self.ch),
-            ')' => tok = newToken(token.RPAR, self.ch),
-            ',' => tok = newToken(token.COMMA, self.ch),
-            '+' => tok = newToken(token.PLUS, self.ch),
-            ':' => tok = newToken(token.COLON, self.ch),
+            //'=' => tok = token.Token{ .type = token.EQUAL, .literal = &[_]u8{self.ch} }, //newToken(token.EQUAL, self.ch),
+            '=' => tok = try newToken(self.allocator, token.EQUAL, self.ch),
+            '(' => tok = try newToken(self.allocator, token.LPAR, self.ch),
+            ')' => tok = try newToken(self.allocator, token.RPAR, self.ch),
+            ',' => tok = try newToken(self.allocator, token.COMMA, self.ch),
+            '+' => tok = try newToken(self.allocator, token.PLUS, self.ch),
+            ':' => tok = try newToken(self.allocator, token.COLON, self.ch),
             //it was supposed to be "", empty string, but
             // I haven't been able to figure it out yet
             // so for now I'll assume 0
             // Careful when actually dealing with the number 0
-            0 => tok = newToken(token.ENDMARKER, self.ch), //""),
-            else => tok = newToken(token.ERRORTOKEN, self.ch),
+            0 => tok = try newToken(self.allocator, token.ENDMARKER, self.ch), //""),
+            else => tok = try newToken(self.allocator, token.ERRORTOKEN, self.ch),
         }
         self.readChar();
-        std.log.warn("\npre-return tok.literal: {c}\n", .{tok.literal});
-        // here .literal doesn't exist already
         return tok;
     }
 };
 
-fn newToken(token_type: token.TokenType, ch: u8) token.Token {
-    // everything works fine here
-    return token.Token{ .type = token_type, .literal = &[_]u8{ch} };
+fn newToken(allocator: Allocator, token_type: token.TokenType, ch: u8) !token.Token {
+    // I need to allocate memory here
+    // why?
+    // I have a ch
+    // And I want to transform it into a slice
+    // A slice is comprised of a len and a POINTER
+    // therefore we're allocating memory
+    // At runtime, the amount of memory necessary
+    // is not known
+
+    // where do we free this memory though?
+    // Perhaps ArenaAllocator?
+
+    //return token.Token{ .type = token_type, .literal = &[_]u8{ch} };
+
+    // []const u8 or []u8 here?
+    //const char_slice = [_]u8{ch};
+    //const alloc_slice:  = try allocator.create(@TypeOf(char_slice), char_slice.len) catch |err| {
+    //    std.log.warn("error: {any}", .{err});
+    //    return &[]u8{'?'};
+    //};
+    //return token.Token{ .type = token_type, .literal = alloc_slice };
+    //return token.Token{ .type = token_type, .literal = [1]u8{ch} };
+    //const tok: token.Token = token.Token{ .type = token_type, .literal = try allocator.alloc([]u8, 1) };
+    const tok = try allocator.create(token.Token);
+    tok.* = .{ .type = token_type, .literal = &[1]u8{ch} };
+    std.debug.print("lexer.zig:newToken: ch: {c}\n", .{ch});
+    std.debug.print("lexer.zig:newToken: tok.literal: {c}\n\n", .{tok.literal});
+    return tok.*;
 }
 
 test "nextToken" {
-    //const Expected = struct { e_type: token.TokenType, literal: []const u8 };
+    const Expected = struct { e_type: token.TokenType, literal: []const u8 };
 
     const input = "=+():,";
 
@@ -81,35 +111,30 @@ test "nextToken" {
 
     const l: *Lexer = try Lexer.init(testing.allocator, input);
     //defer l.deinit(); //doesn't quite work as intended
-    //defer l.deinit(testing.allocator);
+    //defer l.deinit(testing.allocator); // doesn't either
     defer testing.allocator.destroy(l);
 
-    //const l = Lexer.init();
-    // trouble line
-    //const l = Lexer.new(input);
-    // workaround
-    //var l = Lexer{ .input = input };
+    const tests = [_]Expected{
+        .{ .e_type = token.EQUAL, .literal = "=" },
+        .{ .e_type = token.PLUS, .literal = "+" },
+        .{ .e_type = token.LPAR, .literal = "(" },
+        .{ .e_type = token.RPAR, .literal = ")" },
+        .{ .e_type = token.COLON, .literal = ":" },
+        .{ .e_type = token.COMMA, .literal = "," },
+        .{ .e_type = token.ENDMARKER, .literal = "0" },
+    };
 
-    //l.readChar();
+    for (tests) |t| {
+        const tok = try l.nextToken();
+        //defer testing.allocator.free(tok);
+        defer testing.allocator.destroy(tok);
 
-    //const tests = [_]Expected{
-    //    .{ .e_type = token.EQUAL, .literal = "=" },
-    //    .{ .e_type = token.PLUS, .literal = "+" },
-    //    .{ .e_type = token.LPAR, .literal = "(" },
-    //    .{ .e_type = token.RPAR, .literal = ")" },
-    //    .{ .e_type = token.COLON, .literal = ":" },
-    //    .{ .e_type = token.COMMA, .literal = "," },
-    //    .{ .e_type = token.ENDMARKER, .literal = "0" },
-    //};
+        try testing.expectEqualSlices(u8, t.literal, tok.literal);
+        try testing.expectEqualSlices(u8, t.e_type, tok.type);
+    }
 
-    //for (tests) |t| {
-    //    const tok = l.nextToken();
-
-    //    std.log.warn("\nt.literal: {s}; tok.literal: {s}\n", .{ t.literal, tok.literal });
-
-    //    //try testing.expectEqualSlices(u8, t.literal, tok.literal);
-    //    try testing.expectEqualSlices(u8, t.e_type, tok.type);
-    //}
-
-    try testing.expectEqualStrings(input, l.input);
+    //try testing.expectEqualStrings(input, l.input);
+    //try testing.expectEqual('=', l.ch);
+    //try testing.expectEqual(1, l.read_position);
+    //try testing.expectEqual(0, l.position);
 }
