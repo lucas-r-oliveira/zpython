@@ -47,11 +47,10 @@ pub const Lexer = struct {
         self.read_position += 1;
     }
 
-    pub fn nextToken(self: *Lexer) !token.Token {
-        var tok: token.Token = undefined;
+    pub fn nextToken(self: *Lexer) !*token.Token {
+        var tok: *token.Token = undefined;
 
         switch (self.ch) {
-            //'=' => tok = token.Token{ .type = token.EQUAL, .literal = &[_]u8{self.ch} }, //newToken(token.EQUAL, self.ch),
             '=' => tok = try newToken(self.allocator, token.EQUAL, self.ch),
             '(' => tok = try newToken(self.allocator, token.LPAR, self.ch),
             ')' => tok = try newToken(self.allocator, token.RPAR, self.ch),
@@ -70,7 +69,7 @@ pub const Lexer = struct {
     }
 };
 
-fn newToken(allocator: Allocator, token_type: token.TokenType, ch: u8) !token.Token {
+fn newToken(allocator: Allocator, token_type: token.TokenType, ch: u8) !*token.Token {
     // I need to allocate memory here
     // why?
     // I have a ch
@@ -83,22 +82,10 @@ fn newToken(allocator: Allocator, token_type: token.TokenType, ch: u8) !token.To
     // where do we free this memory though?
     // Perhaps ArenaAllocator?
 
-    //return token.Token{ .type = token_type, .literal = &[_]u8{ch} };
-
     // []const u8 or []u8 here?
-    //const char_slice = [_]u8{ch};
-    //const alloc_slice:  = try allocator.create(@TypeOf(char_slice), char_slice.len) catch |err| {
-    //    std.log.warn("error: {any}", .{err});
-    //    return &[]u8{'?'};
-    //};
-    //return token.Token{ .type = token_type, .literal = alloc_slice };
-    //return token.Token{ .type = token_type, .literal = [1]u8{ch} };
-    //const tok: token.Token = token.Token{ .type = token_type, .literal = try allocator.alloc([]u8, 1) };
-    const tok = try allocator.create(token.Token);
-    tok.* = .{ .type = token_type, .literal = &[1]u8{ch} };
-    std.debug.print("lexer.zig:newToken: ch: {c}\n", .{ch});
-    std.debug.print("lexer.zig:newToken: tok.literal: {c}\n\n", .{tok.literal});
-    return tok.*;
+    const tok: *token.Token = try allocator.create(token.Token);
+    tok.* = .{ .type = token_type, .literal = &[_]u8{ch} };
+    return tok;
 }
 
 test "nextToken" {
@@ -125,16 +112,10 @@ test "nextToken" {
     };
 
     for (tests) |t| {
-        const tok = try l.nextToken();
-        //defer testing.allocator.free(tok);
+        const tok: *token.Token = try l.nextToken();
         defer testing.allocator.destroy(tok);
 
         try testing.expectEqualSlices(u8, t.literal, tok.literal);
         try testing.expectEqualSlices(u8, t.e_type, tok.type);
     }
-
-    //try testing.expectEqualStrings(input, l.input);
-    //try testing.expectEqual('=', l.ch);
-    //try testing.expectEqual(1, l.read_position);
-    //try testing.expectEqual(0, l.position);
 }
