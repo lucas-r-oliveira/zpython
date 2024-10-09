@@ -32,7 +32,6 @@ pub const Lexer = struct {
     pub fn new(input: []const u8) *Lexer {
         var l: Lexer = Lexer{ .input = input, .position = 0, .read_position = 0 };
         l.readChar();
-        // print here crashes the program???
         return &l;
     }
 
@@ -57,11 +56,14 @@ pub const Lexer = struct {
             ',' => tok = try newToken(self.allocator, token.COMMA, self.ch),
             '+' => tok = try newToken(self.allocator, token.PLUS, self.ch),
             ':' => tok = try newToken(self.allocator, token.COLON, self.ch),
-            //it was supposed to be "", empty string, but
-            // I haven't been able to figure it out yet
-            // so for now I'll assume 0
-            // Careful when actually dealing with the number 0
-            0 => tok = try newToken(self.allocator, token.ENDMARKER, self.ch), //""),
+            0 => {
+                //it was supposed to be "", empty string, but
+                // I haven't been able to figure it out yet
+                // so for now I'll assume 0
+                // Careful when actually dealing with the number 0
+                const end_char: u8 = '0';
+                tok = try newToken(self.allocator, token.ENDMARKER, end_char);
+            },
             else => tok = try newToken(self.allocator, token.ERRORTOKEN, self.ch),
         }
         self.readChar();
@@ -84,11 +86,14 @@ fn newToken(allocator: Allocator, token_type: token.TokenType, ch: u8) !*token.T
 
     // []const u8 or []u8 here?
     const tok: *token.Token = try allocator.create(token.Token);
-    tok.* = .{ .type = token_type, .literal = &[_]u8{ch} };
+    const alloc_slice = try allocator.alloc(u8, 1);
+    alloc_slice[0] = ch;
+
+    tok.* = .{ .type = token_type, .literal = alloc_slice };
     return tok;
 }
 
-test "nextToken" {
+test "nextToken happy path" {
     const Expected = struct { e_type: token.TokenType, literal: []const u8 };
 
     const input = "=+():,";
@@ -114,6 +119,7 @@ test "nextToken" {
     for (tests) |t| {
         const tok: *token.Token = try l.nextToken();
         defer testing.allocator.destroy(tok);
+        defer testing.allocator.free(tok.literal);
 
         try testing.expectEqualSlices(u8, t.literal, tok.literal);
         try testing.expectEqualSlices(u8, t.e_type, tok.type);
