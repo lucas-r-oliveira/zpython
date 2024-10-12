@@ -1,6 +1,7 @@
 const std = @import("std");
 const testing = std.testing;
 const token = @import("token.zig");
+const TokenType = token.TokenType;
 const Allocator = std.mem.Allocator;
 
 pub const Lexer = struct {
@@ -50,28 +51,28 @@ pub const Lexer = struct {
         var tok: *token.Token = undefined;
 
         switch (self.ch) {
-            '=' => tok = try newToken(self.allocator, token.EQUAL, self.ch),
-            '(' => tok = try newToken(self.allocator, token.LPAR, self.ch),
-            ')' => tok = try newToken(self.allocator, token.RPAR, self.ch),
-            ',' => tok = try newToken(self.allocator, token.COMMA, self.ch),
-            '+' => tok = try newToken(self.allocator, token.PLUS, self.ch),
-            ':' => tok = try newToken(self.allocator, token.COLON, self.ch),
+            '=' => tok = try newToken(self.allocator, TokenType.EQUAL, self.ch),
+            '(' => tok = try newToken(self.allocator, TokenType.LPAR, self.ch),
+            ')' => tok = try newToken(self.allocator, TokenType.RPAR, self.ch),
+            ',' => tok = try newToken(self.allocator, TokenType.COMMA, self.ch),
+            '+' => tok = try newToken(self.allocator, TokenType.PLUS, self.ch),
+            ':' => tok = try newToken(self.allocator, TokenType.COLON, self.ch),
             0 => {
                 //it was supposed to be "", empty string, but
                 // I haven't been able to figure it out yet
                 // so for now I'll assume 0
                 // Careful when actually dealing with the number 0
                 const end_char: u8 = '0';
-                tok = try newToken(self.allocator, token.ENDMARKER, end_char);
+                tok = try newToken(self.allocator, TokenType.ENDMARKER, end_char);
             },
-            else => tok = try newToken(self.allocator, token.ERRORTOKEN, self.ch),
+            else => tok = try newToken(self.allocator, TokenType.ERRORTOKEN, self.ch),
         }
         self.readChar();
         return tok;
     }
 };
 
-fn newToken(allocator: Allocator, token_type: token.TokenType, ch: u8) !*token.Token {
+fn newToken(allocator: Allocator, token_type: TokenType, ch: u8) !*token.Token {
     // I need to allocate memory here
     // why?
     // I have a ch
@@ -94,7 +95,7 @@ fn newToken(allocator: Allocator, token_type: token.TokenType, ch: u8) !*token.T
 }
 
 test "nextToken happy path" {
-    const Expected = struct { e_type: token.TokenType, literal: []const u8 };
+    const Expected = struct { type: TokenType, literal: []const u8 };
 
     const input = "=+():,";
 
@@ -107,13 +108,13 @@ test "nextToken happy path" {
     defer testing.allocator.destroy(l);
 
     const tests = [_]Expected{
-        .{ .e_type = token.EQUAL, .literal = "=" },
-        .{ .e_type = token.PLUS, .literal = "+" },
-        .{ .e_type = token.LPAR, .literal = "(" },
-        .{ .e_type = token.RPAR, .literal = ")" },
-        .{ .e_type = token.COLON, .literal = ":" },
-        .{ .e_type = token.COMMA, .literal = "," },
-        .{ .e_type = token.ENDMARKER, .literal = "0" },
+        .{ .type = TokenType.EQUAL, .literal = "=" },
+        .{ .type = TokenType.PLUS, .literal = "+" },
+        .{ .type = TokenType.LPAR, .literal = "(" },
+        .{ .type = TokenType.RPAR, .literal = ")" },
+        .{ .type = TokenType.COLON, .literal = ":" },
+        .{ .type = TokenType.COMMA, .literal = "," },
+        .{ .type = TokenType.ENDMARKER, .literal = "0" },
     };
 
     for (tests) |t| {
@@ -122,6 +123,6 @@ test "nextToken happy path" {
         defer testing.allocator.free(tok.literal);
 
         try testing.expectEqualSlices(u8, t.literal, tok.literal);
-        try testing.expectEqualSlices(u8, t.e_type, tok.type);
+        try testing.expectEqual(t.type, tok.type);
     }
 }

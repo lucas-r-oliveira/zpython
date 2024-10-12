@@ -1,7 +1,6 @@
-pub const TokenType = []const u8; // ideally, this would probably be a byte
-
 pub const Token = struct {
-    type: TokenType,
+    //TODO:
+    type: TokenType, //[]const u8, // ideally, this would probably be a byte
     literal: []const u8,
 };
 
@@ -29,24 +28,44 @@ pub const Token = struct {
 //    COLON = ":",
 //    COMMA = ",",
 //};
+pub const TokenType = enum {
+    ERRORTOKEN,
+    ENDMARKER,
+
+    NAME,
+    NUMBER,
+    NEWLINE,
+    INDENT,
+    DEDENT,
+
+    //operators
+    EQUAL,
+    PLUS,
+
+    // Delimiters
+    LPAR,
+    RPAR,
+    COLON,
+    COMMA,
+};
 
 // TOKENS DEFINITION
-pub const ERRORTOKEN: []const u8 = "ERRORTOKEN";
-pub const ENDMARKER: []const u8 = "";
+//pub const ERRORTOKEN: []const u8 = "ERRORTOKEN";
+//pub const ENDMARKER: []const u8 = "";
+////
+//// Identifiers + literals
+//pub const NAME: []const u8 = "NAME"; //includes vars and keywords
+//pub const NUMBER: []const u8 = "NUMBER";
+//pub const NEWLINE: []const u8 = "\n";
+//pub const INDENT: []const u8 = "  ";
+//pub const DEDENT: []const u8 = "";
 //
-// Identifiers + literals
-pub const NAME: []const u8 = "NAME"; //includes vars and keywords
-pub const NUMBER: []const u8 = "NUMBER";
-pub const NEWLINE: []const u8 = "\n";
-pub const INDENT: []const u8 = "  ";
-pub const DEDENT: []const u8 = "";
-
-// Operators
-pub const EQUAL: []const u8 = "=";
-pub const PLUS: []const u8 = "+";
-
-// Delimiters
-pub const LPAR: []const u8 = "(";
-pub const RPAR: []const u8 = ")";
-pub const COLON: []const u8 = ":";
-pub const COMMA: []const u8 = ",";
+//// Operators
+//pub const EQUAL: []const u8 = "=";
+//pub const PLUS: []const u8 = "+";
+//
+//// Delimiters
+//pub const LPAR: []const u8 = "(";
+//pub const RPAR: []const u8 = ")";
+//pub const COLON: []const u8 = ":";
+//pub const COMMA: []const u8 = ",";
