@@ -32,7 +32,7 @@ pub const TokenType = enum {
     ERRORTOKEN,
     ENDMARKER,
 
-    NAME,
+    NAME, //includes vars and keywords
     NUMBER,
     NEWLINE,
     INDENT,
